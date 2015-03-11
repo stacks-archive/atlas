@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    Username Resolver
+    Openname-resolver
     ~~~~~
 
     :copyright: (c) 2015 by Openname.org

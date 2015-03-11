@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+    Onename API
+    Copyright 2014 Halfmoon Labs, Inc.
+    ~~~~~
+"""
 
 import requests
 import json
@@ -112,7 +117,7 @@ def profile_to_proofs(profile, openname, refresh=False):
     global MEMCACHED_ENABLED
 
     if refresh:
-        MEMCACHED_ENABLED = False
+        MEMCACHED_ENABLED = False 
 
     proofs = []
 
@@ -128,20 +133,20 @@ def profile_to_proofs(profile, openname, refresh=False):
                         "identifier": identifier,
                         "valid": False
                     }
-
+                    
                     proof_url_hash = hashlib.md5(proof_url).hexdigest()
 
-                    if MEMCACHED_ENABLED:
+                    if MEMCACHED_ENABLED: 
                         cache_reply = mc.get("proof_" + proof_url_hash)
                     else:
-                        cache_reply = None
+                        cache_reply = None 
                         #log.debug("cache off")
 
-                    if cache_reply is None:
-
+                    if cache_reply is None: 
+                      
                         if is_valid_proof(proof_site, identifier, openname, proof_url):
                             proof["valid"] = True
-
+                    
                             if MEMCACHED_ENABLED:
                                 mc.set("proof_" + proof_url_hash,openname,int(time() + MEMCACHED_TIMEOUT))
                                 #log.debug("cache miss")
