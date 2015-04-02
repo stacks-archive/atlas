@@ -59,7 +59,10 @@ def name_show_mem(key):
     else:
         log.debug("cache hit: " + str(key))
         info = {}
-        info['value'] = json.loads(cache_reply)
+        try:
+            info['value'] = json.loads(cache_reply)
+        except:
+            abort(404)
 
     return info
 
