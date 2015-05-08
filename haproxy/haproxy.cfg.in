@@ -1,0 +1,24 @@
+global
+   log /dev/log   local0
+   log /dev/log   local1 notice
+   chroot /var/lib/haproxy
+   user haproxy
+   group haproxy
+   daemon
+
+defaults
+   log   global
+   mode  tcp
+        option  tcplog
+   option   dontlognull
+   timeout connect 5000
+   timeout client 50000
+   timeout server 50000
+
+frontend bitcoind
+   bind *:8332
+   default_backend bitcoind
+
+backend bitcoind
+@HAPROXY_BACKENDS@
+
