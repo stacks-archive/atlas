@@ -11,3 +11,4 @@ python-bitcoinrpc==0.1
 python-daemon==1.6.1
 requests==2.3.0
 beautifulsoup4==4.3.2
+sentry

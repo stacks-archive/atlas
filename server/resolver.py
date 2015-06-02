@@ -11,8 +11,11 @@
 from flask import Flask, make_response, jsonify, abort, request
 import json
 import re
+from raven.contrib.flask import Sentry
 
 app = Flask(__name__)
+app.config['SENTRY_DSN'] = 'http://7e93fab56eee4f2a93b235d75bc767c2:392ace6eda564e5c9cd9c4613cbfe06b@107.22.186.176:9000/2'
+sentry = Sentry(app)
 
 from .config import DEBUG
 from .config import DEFAULT_HOST, MEMCACHED_SERVERS, MEMCACHED_USERNAME
@@ -83,10 +86,12 @@ def name_show_mem(key):
                 mc.set("name_" + str(key), json.dumps(info['value']),
                        int(time() + MEMCACHED_TIMEOUT))
                 log.debug("cache miss: " + str(key))
+		sentry.captureMessage("cache miss: " + str(key))
         except:
             info = {}
     else:
         log.debug("cache hit: " + str(key))
+	sentry.captureMessage("cache hit: " + str(key))
         info['value'] = json.loads(cache_reply)
 
     return info
@@ -177,10 +182,12 @@ def get_user_profile(username):
 
     if MEMCACHED_ENABLED:
         log.debug('cache enabled')
+	sentry.captureMessage('cache enabled')
         cache_reply = mc.get("profile_" + str(key))
     else:
         cache_reply = None
         log.debug("cache off")
+	sentry.captureMessage("cache off")
 
     if cache_reply is None:
 
@@ -200,8 +207,10 @@ def get_user_profile(username):
             mc.set("profile_" + str(key), json.dumps(info),
                    int(time() + MEMCACHED_TIMEOUT))
             log.debug("cache miss full_profile")
+	    sentry.captureMessage("cache miss full_profile")
     else:
         log.debug("cache hit full_profile")
+	sentry.captureMessage("cache hit full_profile")
         info = json.loads(cache_reply)
 
     return info
