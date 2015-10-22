@@ -149,7 +149,7 @@ def get_user_profile(username, refresh=False, namespace=DEFAULT_NAMESPACE):
     username = username.lower()
 
     blockstore_client = Proxy(BLOCKSTORED_SERVER, BLOCKSTORED_PORT)
-    blockstore_resp = blockstore_client.lookup(username + "." + namespace)
+    blockstore_resp = blockstore_client.get_name_blockchain_record(username + "." + namespace)
     blockstore_resp = blockstore_resp[0]
 
     if blockstore_resp is None:
@@ -226,7 +226,7 @@ def get_namespace():
     namespace = 'xx'  # get namespace info
 
     results['usernames'] = namespace['namespace']
-    results['profiles'] = namespace['profiles'] 
+    results['profiles'] = namespace['profiles']
 
     return jsonify(results)
 
