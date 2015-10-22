@@ -117,7 +117,7 @@ def get_profile_from_dht(profile_hash):
     dht_resp = dht_resp[0]
 
     try:
-        profile = json.loads(dht_resp['value'])
+        profile = json.loads(dht_resp)
     except:
         profile = {}
 
@@ -226,7 +226,7 @@ def get_namespace():
     namespace = 'xx'  # get namespace info
 
     results['usernames'] = namespace['namespace']
-    results['profiles'] = namespace['profiles'] 
+    results['profiles'] = namespace['profiles']
 
     return jsonify(results)
 
