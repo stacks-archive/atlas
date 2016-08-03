@@ -132,23 +132,28 @@ def format_profile(profile, username, address, refresh=False):
     """
 
     data = {}
+    zone_file = {}
 
     # save the original profile, in case it's a zone file
-    zone_file = profile
+    if not is_profile_in_legacy_format(profile):
+        zone_file = profile
 
     if 'error' in profile:
         data['profile'] = {}
         data['error'] = profile['error']
         data['verifications'] = []
+        data['zone_file'] = zone_file
 
         return data
 
     try:
         profile = resolve_zone_file_to_profile(profile, address)
+
     except:
         if 'message' in profile:
             data['profile'] = json.loads(profile)
             data['verifications'] = []
+            data['zone_file'] = zone_file
             return data
 
     if profile is None:
@@ -157,7 +162,6 @@ def format_profile(profile, username, address, refresh=False):
         data['verifications'] = []
     else:
         if not is_profile_in_legacy_format(profile):
-            data['zone_file'] = zone_file
             data['profile'] = profile
             data['verifications'] = fetch_proofs(data['profile'], username,
                                                  profile_ver=3, refresh=refresh)
@@ -165,6 +169,8 @@ def format_profile(profile, username, address, refresh=False):
             data['profile'] = json.loads(profile)
             data['verifications'] = fetch_proofs(data['profile'], username,
                                                  refresh=refresh)
+
+    data['zone_file'] = zone_file
 
     return data
 
@@ -196,7 +202,7 @@ def get_profile(username, refresh=False, namespace=DEFAULT_NAMESPACE):
         except:
             abort(500, "Connection to blockstack-server %s:%s timed out" % (BLOCKSTACKD_IP, BLOCKSTACKD_PORT))
 
-        if bs_resp is None:
+        if bs_resp is None or 'error' in bs_resp:
             abort(404)
 
         if 'value_hash' in bs_resp:
