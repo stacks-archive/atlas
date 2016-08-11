@@ -132,11 +132,7 @@ def format_profile(profile, username, address, refresh=False):
     """
 
     data = {}
-    zone_file = {}
-
-    # save the original profile, in case it's a zone file
-    if not is_profile_in_legacy_format(profile):
-        zone_file = profile
+    zone_file = profile
 
     if 'error' in profile:
         data['profile'] = {}
@@ -160,8 +156,16 @@ def format_profile(profile, username, address, refresh=False):
         data['profile'] = {}
         data['error'] = "Malformed profile data."
         data['verifications'] = []
+
     else:
-        if not is_profile_in_legacy_format(profile):
+        profile_in_legacy_format = False
+
+        try:
+            profile_in_legacy_format = is_profile_in_legacy_format(profile)
+        except:
+            pass
+
+        if not profile_in_legacy_format:
             data['profile'] = profile
             data['verifications'] = fetch_proofs(data['profile'], username,
                                                  profile_ver=3, refresh=refresh)
