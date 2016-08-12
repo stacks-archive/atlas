@@ -19,7 +19,9 @@ from basicrpc import Proxy
 
 from blockstack_proofs import profile_to_proofs, profile_v3_to_proofs
 from blockstack_profiles import resolve_zone_file_to_profile
-from blockstack_profiles import is_profile_in_legacy_format
+from blockstack_profiles import get_token_file_url_from_zone_file
+from blockstack_profiles import get_profile_from_tokens
+#from blockstack_profiles import is_profile_in_legacy_format
 
 from .crossdomain import crossdomain
 
@@ -125,6 +127,60 @@ def fetch_proofs(profile, username, profile_ver=2, refresh=False):
     return proofs
 
 
+def is_profile_in_legacy_format(profile):
+    """
+    Is a given profile JSON object in legacy format?
+    """
+    if isinstance(profile, dict):
+        pass
+    elif isinstance(profile, (str, unicode)):
+        try:
+            profile = json.loads(profile)
+        except ValueError:
+            return False
+    else:
+        return False
+
+    if "@type" in profile:
+        return False
+
+    if "@context" in profile:
+        return False
+
+    is_in_legacy_format = False
+
+    if "avatar" in profile:
+        is_in_legacy_format = True
+    elif "cover" in profile:
+        is_in_legacy_format = True
+    elif "bio" in profile:
+        is_in_legacy_format = True
+    elif "twitter" in profile:
+        is_in_legacy_format = True
+    elif "facebook" in profile:
+        is_in_legacy_format = True
+
+    return is_in_legacy_format
+
+
+def resolve_zone_file_to_profile(zone_file, address_or_public_key):
+    if is_profile_in_legacy_format(zone_file):
+        return zone_file
+
+    try:
+        token_file_url = get_token_file_url_from_zone_file(zone_file)
+
+        r = requests.get(token_file_url)
+
+        profile_token_records = json.loads(r.text)
+
+        profile = get_profile_from_tokens(profile_token_records, address_or_public_key)
+    except Exception as e:
+        return None, str(e)
+
+    return profile, None
+
+
 def format_profile(profile, username, address, refresh=False):
     """ Process profile data and
         1) Insert verifications
@@ -143,8 +199,7 @@ def format_profile(profile, username, address, refresh=False):
         return data
 
     try:
-        profile = resolve_zone_file_to_profile(profile, address)
-
+        profile, error = resolve_zone_file_to_profile(profile, address)
     except:
         if 'message' in profile:
             data['profile'] = json.loads(profile)
@@ -154,16 +209,16 @@ def format_profile(profile, username, address, refresh=False):
 
     if profile is None:
         data['profile'] = {}
-        data['error'] = "Malformed profile data."
+
+        if error is not None:
+            data['error'] = error
+        else:
+            data['error'] = "Malformed profile data."
         data['verifications'] = []
 
     else:
-        profile_in_legacy_format = False
 
-        try:
-            profile_in_legacy_format = is_profile_in_legacy_format(profile)
-        except:
-            pass
+        profile_in_legacy_format = is_profile_in_legacy_format(profile)
 
         if not profile_in_legacy_format:
             data['profile'] = profile
