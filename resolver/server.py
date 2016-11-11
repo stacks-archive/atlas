@@ -12,6 +12,7 @@ import json
 import collections
 import pylibmc
 import logging
+import xmlrpclib
 
 from flask import Flask, make_response, jsonify, abort, request
 from time import time
@@ -22,6 +23,9 @@ from blockstack_profiles import resolve_zone_file_to_profile
 from blockstack_profiles import get_token_file_url_from_zone_file
 from blockstack_profiles import get_profile_from_tokens
 #from blockstack_profiles import is_profile_in_legacy_format
+from blockstack_zones import parse_zone_file
+
+from blockstack_client.proxy import get_name_blockchain_record
 
 from .crossdomain import crossdomain
 
@@ -163,7 +167,56 @@ def is_profile_in_legacy_format(profile):
     return is_in_legacy_format
 
 
+def parse_uri_from_zone_file(zone_file):
+
+    token_file_url = None
+    zone_file = dict(parse_zone_file(zone_file))
+
+    if isinstance(zone_file["uri"], list) and len(zone_file["uri"]) > 0:
+
+        index = 0
+        while(index < len(zone_file["uri"])):
+
+            record = zone_file["uri"][index]
+
+            if 'name' in record and record['name'] == '_http._tcp':
+                first_uri_record = zone_file["uri"][index]
+                token_file_url = first_uri_record["target"]
+                break
+
+            index += 1
+
+    return token_file_url
+
+
+def resolve_zone_file_from_rpc(zone_file, owner_address):
+
+    rpc_uri = parse_uri_from_zone_file(zone_file)
+
+    uri, fqu = rpc_uri.rsplit('#')
+
+    try:
+        s = xmlrpclib.ServerProxy(uri, allow_none=True)
+        data = s.get_profile(fqu)
+    except Exception as e:
+        print e
+
+    data = json.loads(data)
+    profile = json.loads(data['profile'])
+    pubkey = profile[0]['parentPublicKey']
+
+    try:
+        profile = get_profile_from_tokens(profile, pubkey)
+    except Exception as e:
+        print e
+
+    return profile
+
+
 def resolve_zone_file_to_profile(zone_file, address_or_public_key):
+
+    profile = None
+
     if is_profile_in_legacy_format(zone_file):
         return zone_file
 
@@ -176,7 +229,7 @@ def resolve_zone_file_to_profile(zone_file, address_or_public_key):
 
         profile = get_profile_from_tokens(profile_token_records, address_or_public_key)
     except Exception as e:
-        return None, str(e)
+        profile = resolve_zone_file_from_rpc(zone_file, address_or_public_key)
 
     return profile, None
 
@@ -194,6 +247,7 @@ def format_profile(profile, username, address, refresh=False):
         data['profile'] = {}
         data['error'] = profile['error']
         data['verifications'] = []
+        data['owner_address'] = address
         data['zone_file'] = zone_file
 
         return data
@@ -204,6 +258,7 @@ def format_profile(profile, username, address, refresh=False):
         if 'message' in profile:
             data['profile'] = json.loads(profile)
             data['verifications'] = []
+            data['owner_address'] = address
             data['zone_file'] = zone_file
             return data
 
@@ -225,11 +280,15 @@ def format_profile(profile, username, address, refresh=False):
             data['verifications'] = fetch_proofs(data['profile'], username,
                                                  profile_ver=3, refresh=refresh)
         else:
-            data['profile'] = json.loads(profile)
+            if type(profile) is not dict:
+                data['profile'] = json.loads(profile)
+            else:
+                data['profile'] = profile
             data['verifications'] = fetch_proofs(data['profile'], username,
                                                  refresh=refresh)
 
     data['zone_file'] = zone_file
+    data['owner_address'] = address
 
     return data
 
@@ -255,9 +314,7 @@ def get_profile(username, refresh=False, namespace=DEFAULT_NAMESPACE):
     if dht_cache_reply is None:
 
         try:
-            bs_client = Proxy(BLOCKSTACKD_IP, BLOCKSTACKD_PORT)
-            bs_resp = bs_client.get_name_blockchain_record(username + "." + namespace)
-            bs_resp = bs_resp[0]
+            bs_resp = get_name_blockchain_record(username + "." + namespace)
         except:
             abort(500, "Connection to blockstack-server %s:%s timed out" % (BLOCKSTACKD_IP, BLOCKSTACKD_PORT))
 
