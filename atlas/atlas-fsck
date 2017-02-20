@@ -1,0 +1,46 @@
+#!/usr/bin/env python2
+
+import blockstack
+import blockstack_client
+import os
+import sys
+
+if __name__ == '__main__':
+    conf_dir = None
+    if len(sys.argv) == 1:
+        conf_dir = os.path.expanduser("~/.blockstack-server")
+
+    else:
+        conf_dir = sys.argv[1]
+
+    db_path = os.path.join(conf_dir, "atlas.db")
+    zonefiles_dir = os.path.join(conf_dir, "zonefiles")
+
+    if not os.path.exists(db_path):
+        print >> sys.stderr, "No such atlas db: {}".format(db_path)
+        sys.exit(1)
+
+    if not os.path.exists(zonefiles_dir):
+        print >> sys.stderr, "No such zonefiles dir: {}".format(zonefiles_dir)
+        sys.exit(1)
+
+    # phase 1: find all zonefiles reported to be missing.  check the cache
+    num_zfs = blockstack.atlasdb_zonefile_inv_length(path=db_path)
+    rows = blockstack.atlasdb_zonefile_find_missing(0, num_zfs, path=db_path)
+    for row in rows:
+        zfh = row['zonefile_hash']
+        zfdata = blockstack.get_cached_zonefile_data(zfh, zonefile_dir=zonefiles_dir)
+        if zfdata is None:
+            # this zonefile was rightfull missing
+            continue
+
+        print >> sys.stderr, "Zonefile {} is present, but marked absent in the db".format(zfh)
+        
+        # fix 
+        blockstack.atlasdb_set_zonefile_present( zfh, True, path=db_path )
+
+
+    # phase 2: find all zonefiles marked as present, but that are missing
+    # TODO
+
+    

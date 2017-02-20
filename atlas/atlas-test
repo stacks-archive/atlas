@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+
+import os
+import sys
+
+os.environ['BLOCKSTACK_DEBUG'] = '1'
+
+import blockstack_client
+
+def bitcount( bitvec, status ):
+    count = 0
+    for i in xrange(0, len(bitvec)):
+        bitfield = ord(bitvec[i])
+        for j in xrange(0, 8):
+            if status:
+                # check set
+                if ((1 << (7-j)) & bitfield) != 0:
+                    count += 1
+
+            else:
+                # check unset 
+                if ((1 << (7-j)) & bitfield) == 0:
+                    count += 1
+
+    return count
+
+def bitdiff( bitvec1, bitvec2 ):
+    delta = {
+        'add': [],
+        'remove': []
+    }
+
+    for i in xrange(0, min(len(bitvec1), len(bitvec2))):
+        bitfield1 = ord(bitvec1[i])
+        bitfield2 = ord(bitvec2[i])
+        for j in xrange(0, 8):
+            if ((1 << (7-j)) & (bitfield1)) and not ((1 << (7-j)) & (bitfield2)):
+                delta['remove'].append( i * 8 + j + 1 )
+
+            elif not ((1 << (7-j)) & (bitfield1)) and ((1 << (7-j)) & (bitfield2)):
+                delta['add'].append( i * 8 + j + 1 )
+
+    overflow = None
+    overflow_field = None
+    overflow_begin = None
+    if len(bitvec1) < len(bitvec2):
+        overflow_begin = len(bitvec1)
+        overflow = bitvec2[overflow_begin:]
+        overflow_field = 'add'
+
+    elif len(bitvec1) > len(bitvec2):
+        overflow_begin = len(bitvec2)
+        overflow = bitvec1[overflow_begin:]
+        overflow_field = 'remove'
+
+    if overflow:
+        print "overflow"
+        for i in xrange(0, len(overflow)):
+            bitfield = ord(overflow[i])
+            for j in xrange(0,8):
+                if ((1 << (7-j)) & (bitfield)):
+                    delta[overflow_field].append( (i + overflow_begin) * 8 + j + 1 )
+
+    return delta
+
+
+def main( argv ):
+    hostport_list = []
+    atlas_info = {}
+    hostport_path = argv[1]
+
+    with open(hostport_path, "r") as f:
+        data = f.read().strip()
+        hostport_list = filter( lambda s: len(s) > 0, data.split("\n"))
+        
+    for hostport in hostport_list:
+        print 'Contact {}'.format(hostport)
+        resp = blockstack_client.proxy.get_zonefile_inventory( hostport, 0, 52880 * 8 )
+        if 'error' in resp:
+            print 'Failed to contact {}: {}'.format(hostport, resp['error'])
+            continue
+
+        atlas_info[hostport] = resp
+
+    for hostport, atlas_inv in atlas_info.items():
+        present = bitcount( atlas_inv['inv'], 1 )
+        absent = bitcount( atlas_inv['inv'], 0 )
+        print '{}: {} bytes, {} present, {} absent'.format(hostport, len(atlas_inv['inv']), present, absent)
+
+    for hostport1, atlas_inv1 in atlas_info.items():
+        for hostport2, atlas_inv2 in atlas_info.items():
+            delta = bitdiff( atlas_inv1['inv'], atlas_inv2['inv'] )
+            print '{} differs from {} by: add {}, remove {}'.format(hostport1, hostport2, ",".join([str(bit) for bit in delta['add']]), ",".join([str(bit) for bit in delta['remove']]))
+
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print 'Usage: {} /path/to/hostports.txt'.format(sys.argv[0])
+        sys.exit(0)
+
+    main( sys.argv )
+
+
