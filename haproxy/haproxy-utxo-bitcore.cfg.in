@@ -1,0 +1,53 @@
+global
+   log /dev/log   local0
+   log /dev/log   local1 notice
+   chroot /var/lib/haproxy
+   user haproxy
+   group haproxy
+   daemon
+
+   ca-base /etc/ssl/certs
+   crt-base /etc/ssl/private
+   ssl-default-bind-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS
+   ssl-default-bind-options no-sslv3   
+   
+   maxconn 2048
+   tune.ssl.default-dh-param 2048
+
+defaults
+   log   global
+   mode  http
+   option httplog
+   option   dontlognull
+   option forwardfor
+   option http-server-close
+
+   timeout connect 5000
+   timeout client 50000
+   timeout server 50000
+
+frontend blockstackutxo_http
+   bind *:80
+   default_backend blockstackutxo
+
+frontend blockstackutxo_https
+   bind *:443 ssl crt /etc/ssl/private/utxo.blockstack.org.pem
+
+   # mode tcp
+   # tcp-request inspect-delay 5s
+   # tcp-request content accept if { req.ssl_hello_type 1 }
+
+   # wildcard match all SNI servernames for *.acme.invalid
+   acl foo_app_letsencrypt req.ssl_sni -m end .acme.invalid
+   use_backend foo_bk_letsencrypt if foo_app_letsencrypt
+   default_backend blockstackutxo
+
+backend foo_bk_letsencrypt
+    log     global
+    option tcplog
+    server foo_srv_letsencrypt 127.0.0.1:63443
+   
+backend blockstackutxo
+   redirect scheme https if !{ ssl_fc }
+@HAPROXY_BACKENDS@
+
