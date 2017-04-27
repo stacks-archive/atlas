@@ -1,5 +1,5 @@
 # atlas-monitor
-Network monitoring tool for Blockstack's Atlas network aa
+Network monitoring tool for Blockstack's Atlas network.
 
 ## Installation
 
@@ -28,4 +28,4 @@ Next schedule a cronjob to run the script periodically (say every 5 min) by inse
 */5 * * * * cd /path/to/atlas-monitor/scripts && /path/to/pyton ./atlas-monitor
 ```
 
-Lastly, copy all the contents from the *html* folder into your webserver folder
+Lastly, copy all the contents from the *html* folder into your webserver folder.
