@@ -1,5 +1,11 @@
 # atlas-monitor
 Network monitoring tool for Blockstack's Atlas network.
+<table>
+  <tr>
+  <td><img src="docs/screenshot2.png" width="400"></td>
+  <td><img src="docs/screenshot1.png" width="400"></td>
+  </tr>
+</table>
 
 ## Installation
 
