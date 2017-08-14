@@ -9,7 +9,7 @@ This is the repo for the Atlas peer network used by Blockstack and some associat
 - [haproxy](/haproxy)
 - [Uptime Monitoring](/monitoring)
 
-## Atlas Network
+## Atlas network
 
 All Atlas nodes maintain a 100% state replica, and they organize into an unstructured
 overlay network. The unstructured approach is easier to implement, has no overhead
