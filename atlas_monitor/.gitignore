@@ -1,0 +1,4 @@
+*.pyc
+scripts/atlas-monitor.db
+html/json/*
+html/media/*
