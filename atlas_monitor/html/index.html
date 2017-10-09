@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<head>
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/bootstrap-table.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.9/topojson.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.8/datamaps.world.min.js"></script>
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/bootstrap-table.min.css">
+
+<link href="css/main.css" rel="stylesheet">
+<!--link href="blue/style.css" rel="stylesheet"-->
+<style>
+* {font-family: 'Source Code Pro',monospace;}
+.link { stroke: #777!important; }
+.right { text-align:right; }
+.tooltip-inner {max-width: 420px;width: 420px;}
+.tooltip.in{opacity:1!important;}
+
+div.ttip {   
+    position: absolute;         
+    text-align: center;                            
+    padding: 3px;               
+    font: 12px sans-serif;      
+    background: white; 
+    border: 1px; 
+    border-style: solid;       
+    border-color: black;
+    pointer-events: none;           
+}
+
+}
+</style>
+</head>
+<body>
+    <div class="bg-primary">
+    <header class="container nav-header">
+    <nav class="navbar" style="margin-bottom:0;">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <img src="img/blockstack-logo.png" height="21" width="21" style="display:block; float:left; margin-top:20px; margin-right:10px"><a class="navbar-brand" href="#" style="color:white">Atlas Network</a>
+        </div>
+        <div class="navbar-right">
+            <ul class="nav navbar-nav navbar-right">
+            <li style="display:block; padding: 15px 30px;color:#9d9d9d"> Updated: <span id="updated"></span></li>
+            </ul>
+        </div>
+      </div>
+    </nav>
+    </header>
+    </div>
+
+    <div>
+      <section class="container-fluid spacing-container">
+        <div class="container-fluid col-centered">
+          <div class="container m-b-1">
+
+            <ul class="nav nav-tabs" role="tablist">
+              <li role="presentation" value="1" class="active"><a href="#geo" aria-controls="geo" role="tab" data-toggle="tab" onclick="GeoMap()">Geographic Map</a></li>
+              <li role="presentation" value="2"><a href="#geo" aria-controls="ntw" role="tab" data-toggle="tab" onclick="NtwMap()">Network Map</a></li>
+              <li role="presentation" value="3"><a href="#tbl" aria-controls="tbl" role="tab" data-toggle="tab">Tabulated Data</a></li>
+            </ul>
+
+            <div style="padding:5px">
+              Display nodes seen within the past:
+
+              <div class="btn-group" data-toggle="buttons" id="bselector">
+                <label class="btn btn-default">
+                  <input type="radio" name="options" id="option1" value="3600" autocomplete="off"> 1 hour 
+                </label>
+                <label class="btn btn-default">
+                  <input type="radio" name="options" id="option2" value="86400" autocomplete="off"> 24 hours
+                </label>
+                <label class="btn btn-default">
+                  <input type="radio" name="options" id="option3" value="604800" autocomplete="off"> 7 days
+                </label>
+                <label class="btn btn-default active">
+                  <input type="radio" name="options" id="option4" value="100000000000000" autocomplete="off" checked> All time
+                </label>
+              </div>
+            </div>
+
+            <div class="tab-content">
+              <div role="tabpanel" class="tab-pane active" id="geo">
+                <div id="container" style="position: relative; width: 1000px; height: 600px; margin:0 auto;"></div>    
+              </div>
+              <div role="tabpanel" class="tab-pane" id="tbl">
+                <br/>
+                <div id="table" style="padding-bottom:500px">
+                  <table id="mtable" data-sort-name="present" data-sort-order="desc" style="font-size:0.9em">
+                    <thead>
+                      <tr>
+                        <th data-formatter="runningFormatter"></th>
+                        <th data-field="host"    data-sortable="true">Host</th>
+                        <th data-field="city"                        >City</th>
+                        <th data-field="state"                       >State</th>
+                        <th data-field="country" data-sortable="true">Country</th>
+                        <th data-field="present" data-sortable="true" data-formatter="presentDisplay">Zones<br/>Present</th>
+                        <th data-field="absent"  data-sortable="true" data-formatter="presentDisplay">Zones<br/>Absent</th>
+                        <th data-field="ts"      data-sortable="true" data-formatter="formatDateCell">Last Seen</th>
+                      </tr>
+                    </thead>
+                    <tbody id="mtbody" class="table-striped"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+       
+
+<script>
+    function convertTimestamp(timestamp) {
+      var d = new Date(timestamp * 1000),   // Convert the passed timestamp to milliseconds
+        yyyy = d.getFullYear(),
+        mm = ('0' + (d.getMonth() + 1)).slice(-2),  // Months are zero based. Add leading 0.
+        dd = ('0' + d.getDate()).slice(-2),         // Add leading 0.
+        hh = d.getHours(),
+        h = hh,
+        min = ('0' + d.getMinutes()).slice(-2),     // Add leading 0.
+        ampm = 'AM',
+        time;
+            
+      if (hh > 12) {
+        h = hh - 12;
+        ampm = 'PM';
+      } else if (hh === 12) {
+        h = 12;
+        ampm = 'PM';
+      } else if (hh == 0) {
+        h = 12;
+      }
+     
+      return h + ':' + min + ' ' + ampm + ' '+ mm + '/' + dd + '/' + yyyy;    
+    }
+
+    var map = new Datamap({
+    	element: document.getElementById('container'),
+    	geographyConfig: {
+            borderWidth: 1,
+            borderOpacity: 1,
+            borderColor: 'grey',
+            popupOnHover: false,
+            highlightOnHover: false,
+        },
+    	fills: {
+            defaultFill: 'transparent', 
+            BB: '#270F34'
+        }
+    });
+
+    var force = d3.layout.force()
+                    .size([960, 500])
+                    .nodes([])
+                    .links([])
+                    .charge(-120)
+                    .linkDistance(200)
+                    .on("tick", tick);
+
+    var div = d3.select("body").append("div")   
+                .attr("class", "ttip")               
+                .style("opacity", 0);
+
+    var svg = d3.select("#container").select("svg"),
+        node = svg.selectAll(".node"),
+        link = svg.selectAll(".link"),
+        nodelist,linklist;
+
+    $.getJSON('json/diagnostic.json?nocache=' + (new Date()).getTime(), function(graph) {
+
+        document.getElementById('updated').innerHTML = convertTimestamp(graph.updated)
+
+        nodelist = graph.nodes;
+        linklist = graph.links;
+
+        force.nodes(nodelist).links(linklist);
+
+        $('#mtable').bootstrapTable({
+            data: graph.nodes
+        });
+
+        filterDisplay(10000000);
+
+        $('a[data-toggle="tooltip"]').tooltip({
+                animated: 'fade',
+                placement: 'bottom',
+                html: true
+        });
+     });
+
+    function tick() {
+        link.attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return d.target.y; });
+
+        node.attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return d.y; });
+    }
+
+    function GeoMap() {
+        force.stop();
+        d3.select("#container").select("g.datamaps-subunits").attr("visibility", "visible");
+        geoXY();
+        link.attr("visibility", "hidden");
+    }
+
+    function NtwMap() {
+        d3.select("#container").select("g.datamaps-subunits").attr("visibility", "hidden");
+        force.start();
+        link.attr("visibility", "visible");
+
+    }
+    
+    function runningFormatter(value, row, index) {
+        return index+1;
+    }
+
+    function formatDateCell(value, row, index) {
+        return convertTimestamp(value);
+    }
+
+    function presentDisplay(value,row,index) {
+        return '<a data-toggle="tooltip" title="Zone visualization graph:<br/> present zones in <span style=\'color:#E6E6E6\'>grey</span>, missing zones in <span style=\'color:#FF1E63\'>red</span><br/><img src=\'img/'+row['host'].split(':').slice(0,1)+'.png\' />">'+value+'</a>';
+    }
+
+    function geoXY() {
+        node.attr('cx', function ( datum ) {
+          var latLng = map.projection([datum.longitude, datum.latitude]);
+          if ( latLng ) return latLng[0];
+        })
+        node.attr('cy', function ( datum ) {
+          var latLng = map.projection([datum.longitude, datum.latitude]);
+          if ( latLng ) return latLng[1];
+        })
+    }
+
+    function filterDisplay(threshold){
+        var tmp_nodelist = nodelist.slice(0);
+        var tmp_linklist = linklist.slice(0);
+
+        tmp_nodelist.forEach( function (item) {
+            if ( Date.now()/1000-item.ts > threshold ){
+                tmp_nodelist.splice(tmp_nodelist.indexOf(item),1);
+                tmp_linklist = tmp_linklist.filter(function(l) {
+                    return l.source !== item && l.target !== item;
+                });
+            }
+        });
+
+        link = link.data(tmp_linklist);
+
+        link.enter()
+            .insert("line")
+            .attr("class", "link");
+
+        link.exit()
+            .remove();
+
+        node = node.data(tmp_nodelist);
+
+        node.enter()
+            .insert('circle')
+            .attr('class', 'node')
+            .attr('r',3)
+            .on("mouseover", function(d) {      
+                div .transition()        
+                    .duration(100)      
+                    .style("opacity", 1);      
+                div .html(d.host +': '+ (d.city?d.city+', ':'') +  (d.state?d.state+', ':'') + d.country )  
+                    .style("left", (d3.event.pageX) + "px")     
+                    .style("top", (d3.event.pageY - 28) + "px");    
+                })                  
+            .on("mouseout", function(d) {       
+                div .transition()        
+                    .duration(100)      
+                    .style("opacity", 0);   
+                });
+
+        node.exit()
+            .remove();
+
+        if ($('.nav-tabs .active').attr('value') == 2)
+            force.start();
+        else if ($('.nav-tabs .active').attr('value') == 1)
+            geoXY();
+
+        $('#mtable').bootstrapTable('load', tmp_nodelist);
+
+    }
+
+    $("#bselector :input").change(function() {
+        filterDisplay(this.value); 
+    });
+
+</script>
+</body>
+</html>
