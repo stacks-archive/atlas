@@ -66,16 +66,53 @@ def bitdiff( bitvec1, bitvec2 ):
 
 def main( argv ):
     hostport_list = []
+    host_info = {}
     atlas_info = {}
+    consensus_info = {}
     hostport_path = argv[1]
 
     with open(hostport_path, "r") as f:
         data = f.read().strip()
         hostport_list = filter( lambda s: len(s) > 0, data.split("\n"))
-        
+       
     for hostport in hostport_list:
+        print 'Getinfo {}'.format(hostport)
+        resp = blockstack_client.proxy.getinfo(hostport=hostport)
+        if 'error' in resp:
+            print 'Failed to contact {}: {}'.format(hostport, resp['error'])
+            continue
+
+        host_info[hostport] = resp
+
+    # make sure they're all on the same view of the network 
+    min_block_height = 1e30
+    min_block_height_consensus = None
+    for hostport in host_info.keys():
+        min_block_height = min(host_info[hostport]['last_block_processed'], min_block_height)
+        if host_info[hostport]['last_block_processed'] == min_block_height:
+            min_block_height_consensus = host_info[hostport]['consensus']
+
+    print 'Minimum block height: {} ({})'.format(min_block_height, min_block_height_consensus)
+    for hostport in host_info.keys():
+        if host_info[hostport]['last_block_processed'] == min_block_height:
+            consensus_info[hostport] = host_info[hostport]['consensus']
+        else:
+            resp = blockstack_client.proxy.get_consensus_at(min_block_height, hostport=hostport)
+            if 'error' in resp:
+                print >> 'Failed to get consensus from {}: {}'.format(hostport, resp['error'])
+                continue
+
+            consensus_info[hostport] = resp
+
+    for hostport in consensus_info.keys():
+        for hostport2 in consensus_info.keys():
+            if consensus_info[hostport] != consensus_info[hostport2]:
+                print 'CONSENSUS DIVERGENCE: {} {} != {} {}'.format(hostport, consensus_info[hostport], hostport2, consensus_info[hostport2])
+                sys.exit(1)
+
+    for hostport in host_info.keys():
         print 'Contact {}'.format(hostport)
-        resp = blockstack_client.proxy.get_zonefile_inventory( hostport, 0, 52880 * 8 )
+        resp = blockstack_client.proxy.get_zonefile_inventory( hostport, 0, 524288 )
         if 'error' in resp:
             print 'Failed to contact {}: {}'.format(hostport, resp['error'])
             continue
