@@ -1,0 +1,40 @@
+##
+# You should look at the following URL's in order to grasp a solid understanding
+# of Nginx configuration files in order to fully unleash the power of Nginx.
+# http://wiki.nginx.org/Pitfalls
+# http://wiki.nginx.org/QuickStart
+# http://wiki.nginx.org/Configuration
+#
+# Generally, you will want to move this file somewhere, and start with a clean
+# file but keep this around for reference. Or just disable in sites-enabled.
+#
+# Please see /usr/share/doc/nginx-doc/examples/ for more detailed examples.
+##
+
+# Default server configuration
+
+server {
+        listen 3002 default_server;
+        listen [::]:3002 default_server;
+
+        root /var/www/html;
+
+        index index.html
+
+        server_name _;
+
+        location = /insight-api/tx/send {
+                proxy_pass http://localhost:3001;
+                allow all;
+        }
+
+        location ~ ^/insight-api/addr/[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+/(utxo|balance|unconfirmedBalance)$ {
+                proxy_pass http://localhost:3001;
+                allow all;
+        }
+
+        location / {
+                deny all;
+        }
+}
+

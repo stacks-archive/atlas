@@ -1,0 +1,35 @@
+##
+# You should look at the following URL's in order to grasp a solid understanding
+# of Nginx configuration files in order to fully unleash the power of Nginx.
+# http://wiki.nginx.org/Pitfalls
+# http://wiki.nginx.org/QuickStart
+# http://wiki.nginx.org/Configuration
+#
+# Generally, you will want to move this file somewhere, and start with a clean
+# file but keep this around for reference. Or just disable in sites-enabled.
+#
+# Please see /usr/share/doc/nginx-doc/examples/ for more detailed examples.
+##
+
+limit_req_zone global zone=blockstacklimits:32k rate=5r/s;
+
+# Default server configuration
+#
+server {
+        listen 6264 default_server;
+        listen [::]:6264 default_server;
+
+        client_max_body_size 40k;
+
+        root /var/www/html;
+
+        index index.html
+
+        server_name _;
+
+        location / {
+                limit_req zone=blockstacklimits burst=1000; # nodelay;
+                proxy_pass http://localhost:16264;
+        }
+}
+
