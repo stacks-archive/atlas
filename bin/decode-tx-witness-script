@@ -1,0 +1,7 @@
+#!/usr/bin/python2
+
+import sys
+import virtualchain
+import binascii
+
+print virtualchain.lib.encoding.json_changebase(virtualchain.btc_witness_script_deserialize(sys.argv[1]), lambda x: binascii.hexlify(x))

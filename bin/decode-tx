@@ -1,0 +1,8 @@
+#!/usr/bin/env python2
+
+import virtualchain
+import sys
+import json
+
+tx_str = sys.argv[1]
+print json.dumps( virtualchain.btc_tx_deserialize(tx_str), indent=4, sort_keys=True )

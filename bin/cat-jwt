@@ -1,0 +1,36 @@
+#!/usr/bin/python
+
+import jsontokens
+import sys
+import json
+import os
+
+path = sys.argv[1]
+pubkey = None
+
+if len(sys.argv) > 2:
+    pubkey = sys.argv[2]
+
+jwt_str = None
+if not os.path.exists(path):
+    jwt_str = path
+
+else:
+    with open(path, "r") as f:
+       jwt_str = f.read().strip()
+
+try:
+   jwt = json.loads(jwt_str)
+except:
+   jwt = [{'token': jwt_str}]
+
+if pubkey:
+    v = jsontokens.TokenVerifier()
+    res = v.verify(jwt[0]['token'], pubkey)
+    if not res:
+        print "unverifiable"
+        sys.exit(1)
+
+res = jsontokens.decode_token(jwt[0]['token'])
+print json.dumps(res, indent=4, sort_keys=True)
+

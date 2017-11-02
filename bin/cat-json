@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+
+import json
+import sys
+
+for path in sys.argv[1:]:
+    with open(path, 'r') as f:
+        data = f.read()
+        print json.dumps( json.loads(data), indent=4, sort_keys=True )
+
+sys.exit(0)

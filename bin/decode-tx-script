@@ -1,0 +1,6 @@
+#!/usr/bin/python2
+
+import sys
+import bitcoin
+
+print bitcoin.deserialize_script(sys.argv[1])
