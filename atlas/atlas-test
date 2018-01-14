@@ -86,13 +86,35 @@ def main( argv ):
 
     # make sure they're all on the same view of the network 
     min_block_height = 1e30
+    min_block_height_nodes = []
     min_block_height_consensus = None
+
+    max_block_height = 0
+    max_block_height_nodes = []
+    max_block_height_consensus = None
+
     for hostport in host_info.keys():
-        min_block_height = min(host_info[hostport]['last_block_processed'], min_block_height)
+        new_min_block_height = min(host_info[hostport]['last_block_processed'], min_block_height)
+        if min_block_height != new_min_block_height:
+            min_block_height_nodes = []
+
+        min_block_height = new_min_block_height
         if host_info[hostport]['last_block_processed'] == min_block_height:
             min_block_height_consensus = host_info[hostport]['consensus']
+            min_block_height_nodes.append(hostport)
 
-    print 'Minimum block height: {} ({})'.format(min_block_height, min_block_height_consensus)
+        new_max_block_height = max(host_info[hostport]['last_block_processed'], max_block_height)
+        if max_block_height != new_max_block_height:
+            max_block_height_nodes = []
+
+        max_block_height = new_max_block_height
+        if host_info[hostport]['last_block_processed'] == max_block_height:
+            max_block_height_consensus = host_info[hostport]['consensus']
+            max_block_height_nodes.append(hostport)
+
+    print 'Minimum block height: {} ({}), from {}'.format(min_block_height, min_block_height_consensus, ', '.join(min_block_height_nodes))
+    print 'Maximum block height: {} ({}), from {}'.format(max_block_height, max_block_height_consensus, ', '.join(max_block_height_nodes))
+
     for hostport in host_info.keys():
         if host_info[hostport]['last_block_processed'] == min_block_height:
             consensus_info[hostport] = host_info[hostport]['consensus']
